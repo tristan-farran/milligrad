@@ -40,7 +40,7 @@ class MLP:
 
     def zero_grad(self):
         for p in self.parameters():
-            p.grad = np.zeros_like(p.data)
+            p.grad.fill(0)
 
     def __repr__(self):
         return f"MLP of [{', '.join(str(layer) for layer in self.layers)}]"

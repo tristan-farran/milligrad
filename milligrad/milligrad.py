@@ -14,6 +14,8 @@ def _unbroadcast(grad, shape):
 class Tensor:
     """Stores an n-dimensional array and its gradient."""
 
+    __array_ufunc__ = None  # stop numpy trying to take over
+
     def __init__(self, data, _children=(), _op=""):
         self.data = np.array(data, dtype=np.float64)
         self.grad = np.zeros_like(self.data)
@@ -56,7 +58,7 @@ class Tensor:
 
     def __pow__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(self.data ** other.data, (self, other), "**")
+        out = Tensor(self.data**other.data, (self, other), "**")
 
         def _backward():
             self.grad += _unbroadcast(
@@ -64,7 +66,7 @@ class Tensor:
                 self.data.shape,
             )
             other.grad += _unbroadcast(
-                (self.data ** other.data * np.log(self.data)) * out.grad,
+                (self.data**other.data * np.log(self.data)) * out.grad,
                 other.data.shape,
             )
 
@@ -89,16 +91,18 @@ class Tensor:
         return self + other
 
     def __rsub__(self, other):
-        return (-self) + other
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        return other - self
 
     def __rmul__(self, other):
         return self * other
 
     def __truediv__(self, other):
-        return self * other ** -1
+        return self * other**-1
 
     def __rtruediv__(self, other):
-        return other * self ** -1
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        return other / self
 
     def relu(self):
         out = Tensor(np.maximum(0, self.data), (self,), "ReLU")
@@ -121,15 +125,17 @@ class Tensor:
     def backward(self):
         topo = []
         visited = set()
-
-        def build_topo(v):
+        stack = [self]
+        while stack:
+            v = stack[-1]
             if v not in visited:
                 visited.add(v)
                 for child in v._prev:
-                    build_topo(child)
+                    if child not in visited:
+                        stack.append(child)
+            if stack[-1] is v:
+                stack.pop()
                 topo.append(v)
-
-        build_topo(self)
 
         self.grad = np.ones_like(self.data)
         for v in reversed(topo):
