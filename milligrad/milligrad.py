@@ -113,11 +113,26 @@ class Tensor:
         out._backward = _backward
         return out
 
-    def sum(self):
-        out = Tensor(self.data.sum(), (self,), "sum")
+    def log_softmax(self, axis=1):
+        shifted = self.data - self.data.max(axis=axis, keepdims=True)
+        log_sum_exp = np.log(np.exp(shifted).sum(axis=axis, keepdims=True))
+        out = Tensor(shifted - log_sum_exp, (self,), "log_softmax")
 
         def _backward():
-            self.grad += np.ones_like(self.data) * out.grad
+            softmax = np.exp(out.data)
+            self.grad += out.grad - softmax * out.grad.sum(axis=axis, keepdims=True)
+
+        out._backward = _backward
+        return out
+
+    def sum(self, axis=None, keepdims=False):
+        out = Tensor(self.data.sum(axis=axis, keepdims=keepdims), (self,), "sum")
+
+        def _backward():
+            grad = out.grad
+            if axis is not None and not keepdims:
+                grad = np.expand_dims(grad, axis)
+            self.grad += np.ones_like(self.data) * grad
 
         out._backward = _backward
         return out
