@@ -14,7 +14,7 @@ def _unbroadcast(grad, shape):
 class Tensor:
     """Stores an n-dimensional array and its gradient."""
 
-    __array_ufunc__ = None  # stop numpy trying to take over
+    __array_ufunc__ = None  # stop numpy trying to take over operations
 
     def __init__(self, data, _children=(), _op=""):
         self.data = np.array(data, dtype=np.float64)
