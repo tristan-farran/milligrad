@@ -5,7 +5,7 @@ from .milligrad import Tensor
 class Linear:
 
     def __init__(self, nin, nout, nonlin=True):
-        self.w = Tensor(np.random.randn(nin, nout) * (2 / nin) ** 0.5)
+        self.w = Tensor(np.random.randn(nin, nout) * (2 / nin) ** 0.5)  # He init.
         self.b = Tensor(np.zeros(nout))
         self.nonlin = nonlin
 
