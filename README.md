@@ -41,15 +41,6 @@ for step in range(100):
 How it works
 ------------
 Milligrad implements reverse-mode automatic differentiation (backpropagation) by building a computational graph dynamically:
-
-1. **Forward pass**: Operations on `Tensor` objects store their inputs and operation type
-2. **Backward pass**: Call `.backward()` on the output to recursively compute gradients
-3. **Gradient accumulation**: Gradients flow backward through the graph using the chain rule
-
-Each tensor stores:
-- `data`: The n-dimensional array value
-- `grad`: The accumulated gradient
-- `_prev`: Set of parent tensors in the computation graph
-- `_backward`: Function to propagate gradients to parents
-
-Supported operations include addition, multiplication, matrix multiplication, power, ReLU, sum, and more.
+- Forward pass: Operations on `Tensor` objects store their inputs and operation type
+- Backward pass: Call `.backward()` on the output to recursively compute gradients
+- Gradient accumulation: Gradients flow backward through the graph using the chain rule
