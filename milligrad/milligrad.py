@@ -57,17 +57,29 @@ class Tensor:
         return out
 
     def __pow__(self, other):
-        other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(self.data**other.data, (self, other), "**")
+        if isinstance(other, Tensor):
+            out = Tensor(self.data**other.data, (self, other), "**")
+
+            def _backward():
+                self.grad += _unbroadcast(
+                    (other.data * self.data ** (other.data - 1)) * out.grad,
+                    self.data.shape,
+                )
+                other.grad += _unbroadcast(
+                    (out.data * np.log(self.data)) * out.grad,
+                    other.data.shape,
+                )
+
+            out._backward = _backward
+            return out
+
+        exponent = np.array(other, dtype=np.float64)
+        out = Tensor(self.data**exponent, (self,), "**")
 
         def _backward():
             self.grad += _unbroadcast(
-                (other.data * self.data ** (other.data - 1)) * out.grad,
+                (exponent * self.data ** (exponent - 1)) * out.grad,
                 self.data.shape,
-            )
-            other.grad += _unbroadcast(
-                (self.data**other.data * np.log(self.data)) * out.grad,
-                other.data.shape,
             )
 
         out._backward = _backward
@@ -98,7 +110,18 @@ class Tensor:
         return self * other
 
     def __truediv__(self, other):
-        return self * other**-1
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        out = Tensor(self.data / other.data, (self, other), "/")
+
+        def _backward():
+            self.grad += _unbroadcast(out.grad / other.data, self.data.shape)
+            other.grad += _unbroadcast(
+                -(self.data / (other.data**2)) * out.grad,
+                other.data.shape,
+            )
+
+        out._backward = _backward
+        return out
 
     def __rtruediv__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -131,8 +154,11 @@ class Tensor:
         def _backward():
             grad = out.grad
             if axis is not None and not keepdims:
-                grad = np.expand_dims(grad, axis)
-            self.grad += np.ones_like(self.data) * grad
+                axes = axis if isinstance(axis, tuple) else (axis,)
+                axes = tuple(ax if ax >= 0 else ax + self.data.ndim for ax in axes)
+                for ax in sorted(axes):
+                    grad = np.expand_dims(grad, ax)
+            self.grad += np.broadcast_to(grad, self.data.shape)
 
         out._backward = _backward
         return out
